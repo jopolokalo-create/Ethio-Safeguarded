@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
+import axios from 'axios';
 import { ICONS, APP_NAME } from '../constants';
 import { UserRole, User, RegistrationStatus } from '../types';
-import { store } from '../store';
 
 interface LoginPageProps {
   role: UserRole;
@@ -16,20 +16,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ role, onBack, onSuccess })
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    setTimeout(() => {
-      const users = store.getUsers();
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-      if (!user) {
-        setError('Strategic Identity not found. Verify credentials or register.');
-        setLoading(false);
-        return;
-      }
+    try {
+      const { data: user } = await axios.post<User>('/api/auth/login', {
+        email,
+        password,
+      });
 
       if (user.role !== role) {
         setError(`Access Denied. Identity mismatch for ${role} portal.`);
@@ -44,7 +40,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ role, onBack, onSuccess })
       }
 
       onSuccess(user);
-    }, 1000);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Login failed. Please check credentials.';
+      setError(message);
+      setLoading(false);
+    }
   };
 
   return (
