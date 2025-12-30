@@ -4,8 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import io from 'socket.io-client';
+import axios from 'axios';
 import { User, TruckStatus, AidRequest, RequestStatus } from '../types';
-import { store } from '../store';
 import { ICONS as UI_ICONS, APP_NAME } from '../constants';
 import { Footer } from '../components/Footer';
 
@@ -67,11 +67,16 @@ export const SenderDashboard: React.FC<SenderDashboardProps> = ({ user, onLogout
     urgency: 'Medium' as const
   });
 
-  const fetchData = () => {
-    const allUsers = store.getUsers();
-    setAvailableTrucks(allUsers.filter(u => u.role === 'DRIVER' && u.truckDetails?.currentStatus === TruckStatus.READY));
-    const allRequests = store.getRequests();
-    setActiveRequests(allRequests.filter(r => r.senderId === user.id));
+  const fetchData = async () => {
+    try {
+      const { data: allUsers } = await axios.get<User[]>('/api/users');
+      setAvailableTrucks(allUsers.filter(u => u.role === 'DRIVER' && u.truckDetails?.currentStatus === TruckStatus.READY));
+
+      const { data: allRequests } = await axios.get<AidRequest[]>('/api/aid-requests');
+      setActiveRequests(allRequests.filter(r => r.senderId === user.id));
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    }
   };
 
   useEffect(() => {
@@ -80,36 +85,24 @@ export const SenderDashboard: React.FC<SenderDashboardProps> = ({ user, onLogout
     return () => clearInterval(interval);
   }, [user.id]);
 
-  const handleSubmitAid = (e: React.FormEvent) => {
+  const handleSubmitAid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTruck) return;
 
-    const newRequest: AidRequest = {
-      id: Math.random().toString(36).substr(2, 9),
-      senderId: user.id,
-      driverId: selectedTruck.id,
-      aidType: form.aidType,
-      quantity: form.quantity,
-      destination: form.destination,
-      urgency: form.urgency,
-      status: RequestStatus.PENDING,
-      createdAt: Date.now()
-    };
-
-    const currentRequests = store.getRequests();
-    store.saveRequests([newRequest, ...currentRequests]);
-    
-    store.addNotification({
-      userId: selectedTruck.id,
-      title: 'High Priority Deployment!',
-      message: `${user.organizationDetails?.name} assigned a mission: ${form.aidType}.`,
-      type: 'INFO'
-    });
+    try {
+      await axios.post('/api/aid-requests', {
+        ...form,
+        driverId: selectedTruck.id,
+      });
 
     setShowForm(false);
     setSelectedTruck(null);
     setForm({ aidType: '', quantity: '', destination: '', urgency: 'Medium' });
     fetchData();
+    } catch (error) {
+      console.error('Failed to submit aid request:', error);
+      // Optionally, show an error message to the user
+    }
   };
 
   return (
