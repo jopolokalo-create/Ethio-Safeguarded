@@ -99,18 +99,19 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout
     return () => clearInterval(interval);
   }, [user.id]);
 
-  const toggleAvailability = () => {
+  const toggleAvailability = async () => {
+    if (status === TruckStatus.BUSY) return;
+
     const newStatus = status === TruckStatus.IDLE ? TruckStatus.READY : TruckStatus.IDLE;
     setStatus(newStatus);
-    
-    const users = store.getUsers();
-    const updated = users.map(u => {
-      if (u.id === user.id && u.truckDetails) {
-        return { ...u, truckDetails: { ...u.truckDetails, currentStatus: newStatus } };
-      }
-      return u;
-    });
-    store.saveUsers(updated);
+
+    try {
+      await axios.put(`/api/users/${user.id}/status`, { status: newStatus });
+    } catch (error) {
+      console.error('Failed to update driver status:', error);
+      // Optionally, revert the status on error
+      setStatus(status);
+    }
   };
 
   const handleAccept = (requestId: string) => {

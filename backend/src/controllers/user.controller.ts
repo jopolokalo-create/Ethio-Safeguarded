@@ -18,6 +18,17 @@ export const updateUserLocation = async (req: Request, res: Response) => {
   }
 };
 
+export const updateUserStatus = async (req: Request, res: Response) => {
+  const user = await User.findById(req.params.id);
+  if (user && user.role === 'DRIVER') {
+    user.truckDetails.currentStatus = req.body.status;
+    const updatedUser = await user.save();
+    res.json(updatedUser);
+  } else {
+    res.status(404).json({ message: 'Driver not found' });
+  }
+};
+
 export const getUsers = async (req: Request, res: Response) => {
   const users = await User.find({});
   res.json(users);
