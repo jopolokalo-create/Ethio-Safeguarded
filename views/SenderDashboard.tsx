@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import io from 'socket.io-client';
-import axios from 'axios';
+import api from '../api';
 import { User, TruckStatus, AidRequest, RequestStatus } from '../types';
 import { ICONS as UI_ICONS, APP_NAME } from '../constants';
 import { Footer } from '../components/Footer';
@@ -69,10 +69,10 @@ export const SenderDashboard: React.FC<SenderDashboardProps> = ({ user, onLogout
 
   const fetchData = async () => {
     try {
-      const { data: availableDrivers } = await axios.get<User[]>('/api/users/drivers/available');
+      const { data: availableDrivers } = await api.get<User[]>('/users/drivers/available');
       setAvailableTrucks(availableDrivers);
 
-      const { data: allRequests } = await axios.get<AidRequest[]>('/api/aid-requests');
+      const { data: allRequests } = await api.get<AidRequest[]>('/aid-requests');
       setActiveRequests(allRequests.filter(r => r.senderId === user.id));
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -90,7 +90,7 @@ export const SenderDashboard: React.FC<SenderDashboardProps> = ({ user, onLogout
     if (!selectedTruck) return;
 
     try {
-      await axios.post('/api/aid-requests', {
+      await api.post('/aid-requests', {
         ...form,
         driverId: selectedTruck.id,
       });

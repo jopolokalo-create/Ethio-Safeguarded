@@ -3,9 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import axios from 'axios';
+import api from '../api';
 import { User, TruckStatus, AidRequest, RequestStatus } from '../types';
-import { store } from '../store';
 import { ICONS as UI_ICONS, APP_NAME } from '../constants';
 import { Footer } from '../components/Footer';
 
@@ -27,7 +26,7 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ userId }) => {
 
   const updateLocation = useCallback(async (lat: number, lng: number) => {
     try {
-      await axios.put(`/api/users/${userId}/location`, {
+      await api.put(`/users/${userId}/location`, {
         location: { lat, lng },
       });
     } catch (err) {
@@ -84,16 +83,20 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout
   const [activeRequest, setActiveRequest] = useState<AidRequest | null>(null);
   const [pendingRequests, setPendingRequests] = useState<AidRequest[]>([]);
 
-  useEffect(() => {
-    const fetchRequests = () => {
-      const all = store.getRequests();
-      const pending = all.filter(r => r.driverId === user.id && r.status === RequestStatus.PENDING);
-      const active = all.find(r => r.driverId === user.id && r.status === RequestStatus.ACCEPTED);
+  const fetchRequests = async () => {
+    try {
+      const { data: allRequests } = await api.get<AidRequest[]>('/aid-requests');
+      const pending = allRequests.filter(r => r.driverId === user.id && r.status === RequestStatus.PENDING);
+      const active = allRequests.find(r => r.driverId === user.id && r.status === RequestStatus.ACCEPTED);
       setPendingRequests(pending);
       setActiveRequest(active || null);
       if (active) setStatus(TruckStatus.BUSY);
-    };
+    } catch (error) {
+      console.error('Failed to fetch aid requests:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchRequests();
     const interval = setInterval(fetchRequests, 5000);
     return () => clearInterval(interval);
@@ -106,7 +109,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout
     setStatus(newStatus);
 
     try {
-      await axios.put(`/api/users/${user.id}/status`, { status: newStatus });
+      await api.put(`/users/${user.id}/status`, { status: newStatus });
     } catch (error) {
       console.error('Failed to update driver status:', error);
       // Optionally, revert the status on error
@@ -114,27 +117,17 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ user, onLogout
     }
   };
 
-  const handleAccept = (requestId: string) => {
-    const all = store.getRequests();
-    const updated = all.map(r => r.id === requestId ? { ...r, status: RequestStatus.ACCEPTED } : r);
-    store.saveRequests(updated);
-    
-    const request = updated.find(r => r.id === requestId);
-    if (request) {
-      store.addNotification({
-        userId: request.senderId,
-        title: 'Truck Ready!',
-        message: `${user.name} has accepted your aid request. Tracking active.`,
-        type: 'SUCCESS',
-        requestId: request.id
+  const handleAccept = async (requestId: string) => {
+    try {
+      await api.put(`/aid-requests/${requestId}`, {
+        status: RequestStatus.ACCEPTED,
+        driverId: user.id,
       });
+      fetchRequests(); // Re-fetch to update the UI
+      refreshNotifications();
+    } catch (error) {
+      console.error('Failed to accept aid request:', error);
     }
-
-    setStatus(TruckStatus.BUSY);
-    const users = store.getUsers();
-    store.saveUsers(users.map(u => u.id === user.id ? { ...u, truckDetails: { ...u.truckDetails!, currentStatus: TruckStatus.BUSY } } : u));
-    
-    refreshNotifications();
   };
 
   return (

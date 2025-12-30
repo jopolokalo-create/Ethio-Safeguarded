@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { User, RegistrationStatus } from '../types';
 import { ICONS as UI_ICONS, APP_NAME } from '../constants';
 import { Footer } from '../components/Footer';
@@ -16,7 +16,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
 
   const fetchUsers = async () => {
     try {
-      const { data: allUsers } = await axios.get<User[]>('/api/users');
+      const { data: allUsers } = await api.get<User[]>('/users');
       setUsers(allUsers);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -30,7 +30,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
   const handleStatusChange = async (userId: string, status: RegistrationStatus) => {
     try {
       if (status === RegistrationStatus.APPROVED) {
-        await axios.put(`/api/users/${userId}/approve`);
+        await api.put(`/users/${userId}/approve`);
       }
       // Note: A 'reject' or 'revoke' endpoint would be needed for a full implementation.
       // For now, we'll just re-fetch the user list to reflect the change.

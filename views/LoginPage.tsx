@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { ICONS, APP_NAME } from '../constants';
 import { UserRole, User, RegistrationStatus } from '../types';
 
@@ -22,7 +22,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ role, onBack, onSuccess })
     setError('');
 
     try {
-      const { data: user } = await axios.post<User>('/api/auth/login', {
+      const { data: user } = await api.post<User>('/auth/login', {
         email,
         password,
       });
@@ -39,6 +39,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ role, onBack, onSuccess })
         return;
       }
 
+      // Store user and token
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', user.token);
       onSuccess(user);
     } catch (error: any) {
       const message = error.response?.data?.message || 'Login failed. Please check credentials.';
