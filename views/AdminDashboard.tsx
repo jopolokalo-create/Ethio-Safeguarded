@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { User, RegistrationStatus } from '../types';
-import { store } from '../store';
 import { ICONS as UI_ICONS, APP_NAME } from '../constants';
 import { Footer } from '../components/Footer';
 
@@ -14,14 +14,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }
   const [users, setUsers] = useState<User[]>([]);
   const [tab, setTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
 
+  const fetchUsers = async () => {
+    try {
+      const { data: allUsers } = await axios.get<User[]>('/api/users');
+      setUsers(allUsers);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
   useEffect(() => {
-    setUsers(store.getUsers());
+    fetchUsers();
   }, []);
 
-  const handleStatusChange = (userId: string, status: RegistrationStatus) => {
-    const updated = users.map(u => u.id === userId ? { ...u, status } : u);
-    setUsers(updated);
-    store.saveUsers(updated);
+  const handleStatusChange = async (userId: string, status: RegistrationStatus) => {
+    try {
+      if (status === RegistrationStatus.APPROVED) {
+        await axios.put(`/api/users/${userId}/approve`);
+      }
+      // Note: A 'reject' or 'revoke' endpoint would be needed for a full implementation.
+      // For now, we'll just re-fetch the user list to reflect the change.
+      fetchUsers();
+    } catch (error) {
+      console.error(`Failed to update user ${userId} to status ${status}:`, error);
+    }
   };
 
   const filteredUsers = users.filter(u => u.role !== 'ADMIN' && u.status === tab);
