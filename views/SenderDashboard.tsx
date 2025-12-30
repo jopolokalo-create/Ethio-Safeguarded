@@ -69,8 +69,8 @@ export const SenderDashboard: React.FC<SenderDashboardProps> = ({ user, onLogout
 
   const fetchData = async () => {
     try {
-      const { data: allUsers } = await axios.get<User[]>('/api/users');
-      setAvailableTrucks(allUsers.filter(u => u.role === 'DRIVER' && u.truckDetails?.currentStatus === TruckStatus.READY));
+      const { data: availableDrivers } = await axios.get<User[]>('/api/users/drivers/available');
+      setAvailableTrucks(availableDrivers);
 
       const { data: allRequests } = await axios.get<AidRequest[]>('/api/aid-requests');
       setActiveRequests(allRequests.filter(r => r.senderId === user.id));
