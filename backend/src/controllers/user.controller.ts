@@ -29,6 +29,14 @@ export const updateUserStatus = async (req: Request, res: Response) => {
   }
 };
 
+export const getAvailableDrivers = async (req: Request, res: Response) => {
+  const drivers = await User.find({
+    role: 'DRIVER',
+    'truckDetails.currentStatus': 'READY',
+  });
+  res.json(drivers);
+};
+
 export const getUsers = async (req: Request, res: Response) => {
   const users = await User.find({});
   res.json(users);
